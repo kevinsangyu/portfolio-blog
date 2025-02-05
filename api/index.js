@@ -1,6 +1,7 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import testRoutes from './routes/test.route.js'
 
 dotenv.config()
 
@@ -15,3 +16,5 @@ const app = express();
 app.listen(3000, () => {
     console.log("Server running on 3000")
 })
+
+app.use('/api/test', testRoutes)
