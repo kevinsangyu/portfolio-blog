@@ -47,7 +47,7 @@ export const signin = async (req, res, next) => {
 
         const { password: _, ...user_info } = validUser._doc
 
-        const token = jwt.sign({ id:validUser._id, isAdmin: false }, process.env.JWTSECRET)
+        const token = jwt.sign({ id:validUser._id, isAdmin: validUser.isAdmin }, process.env.JWTSECRET)
         res.status(200).cookie('access_token', token, {httpOnly: true}).json(user_info)
     } catch (error) {
         next(error)
@@ -60,7 +60,7 @@ export const google = async (req, res, next) => {
     try {
         const user = await User.findOne({email})
         if (user) {
-            const token = jwt.sign({id: user._id}, process.env.JWTSECRET)
+            const token = jwt.sign({id: user._id, isAdmin: user.isAdmin}, process.env.JWTSECRET)
             const {password, ...user_info} = user._doc
             res.status(200).cookie('access_token', token, {
                 httpOnly: true
@@ -75,7 +75,7 @@ export const google = async (req, res, next) => {
                 profilePicture: googlePhotoUrl
             })
             await newUser.save();
-            const token = jwt.sign({id: newUser._id}, process.env.JWTSECRET)
+            const token = jwt.sign({id: newUser._id, isAdmin: newUser.isAdmin}, process.env.JWTSECRET)
             const {password, ...user_info} = user._doc
             res.status(200).cookie('access_token', token, {
                 httpOnly: true
