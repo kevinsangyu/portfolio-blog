@@ -16,7 +16,7 @@ const postSchema = new mongoose.Schema({
     },
     image: {
         type: String,
-        default: 'https://i.sstatic.net/y9DpT.jpg'
+        default: 'https://cdn-icons-png.flaticon.com/512/8136/8136031.png'
     },
     category: {
         type: String,

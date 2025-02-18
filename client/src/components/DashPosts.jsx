@@ -6,7 +6,6 @@ import { Link } from 'react-router-dom'
 export default function DashPosts() {
   const { currentUser } = useSelector((state) => state.user)
   const [userPosts, setUserPosts] = useState([])
-  console.log(userPosts)
   useEffect(() => {
     const fetchPosts = async () => {
       try {
