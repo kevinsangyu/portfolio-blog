@@ -23,7 +23,6 @@ export default function UpdatePost() {
   const [imageUploadError, setImageUploadError] = useState(null);
   const [publishError, setPublishError] = useState(null);
   const { postId } = useParams();
-  console.log(formdata);
   useEffect(() => {
     try {
       const fetchPost = async () => {
@@ -48,7 +47,7 @@ export default function UpdatePost() {
     e.preventDefault();
     try {
       const res = await fetch(
-        `/api/post/updatepost/${formdata._id}/${currentUser._id}`,
+        `/api/post/updatepost/${postId}/${currentUser._id}`,
         {
           method: "PUT",
           headers: {
