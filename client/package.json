@@ -20,8 +20,7 @@
     "react-quill": "^2.0.0",
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.1.5",
-    "redux-persist": "^6.0.0",
-    "tailwind-scrollbar": "^4.0.0"
+    "redux-persist": "^6.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
@@ -35,6 +34,7 @@
     "eslint-plugin-react-refresh": "^0.4.16",
     "globals": "^15.14.0",
     "postcss": "^8.5.1",
+    "tailwind-scrollbar": "^4.0.0",
     "tailwindcss": "^3.4.17",
     "vite": "^6.0.5"
   }
