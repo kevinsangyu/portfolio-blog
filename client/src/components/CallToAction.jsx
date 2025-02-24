@@ -1,0 +1,21 @@
+import { Button } from 'flowbite-react'
+import React from 'react'
+
+export default function CallToAction() {
+  return (
+    <div className="flex flex-col sm:flex-row p-3 border border-teal-500 justify-center items-center rounded-tl-3xl rounded-br-3xl text-center">
+        <div className='flex-1 justify-center flex flex-col'>
+            <h2 className='text-2xl'>
+                Call to action Header
+            </h2>
+            <p className='text-gray-500 my-2'>
+                Call to action body... Don't really think a Call to Action is necessary for the purpose of this website.
+            </p>
+            <Button color='blue'><a href='https://www.google.com' target='_blank' rel='noopener noreferrer'>Placeholder button (redirects to google)</a></Button>
+        </div>
+        <div className="p-7 flex-1">
+            <img src='https://landingfoliocom.imgix.net/components/1588570917022_ctapng?&q=75&auto=format&crop=top,left&fit=crop&auto=format&w=1500&h=900' alt='CTA image' />
+        </div>
+    </div>
+  )
+}
