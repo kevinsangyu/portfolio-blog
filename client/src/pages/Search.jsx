@@ -109,6 +109,7 @@ export default function Search() {
                     <label className='font-semibold'>Category:</label>
                     <Select onChange={handleChange} value={sidebarData.category} id='category'>
                         <option value="general">General</option>
+                        <option value="projects">Projects</option>
                         <option value="programming">Programming</option>
                         <option value="career">Career</option>
                         <option value="hobbies">Hobbies</option>

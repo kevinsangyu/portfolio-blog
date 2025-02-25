@@ -26,6 +26,9 @@ export default function FooterComponent() {
                             <Footer.Link href="/" target='_blank' rel='noopener noreferrer'>
                                 Portfolio
                             </Footer.Link>
+                            <Footer.Link href="https://linktr.ee/kevinsangyu" target='_blank' rel='noopener noreferrer'>
+                                Linktree
+                            </Footer.Link>
                         </Footer.LinkGroup>
                     </div>
                     <div>

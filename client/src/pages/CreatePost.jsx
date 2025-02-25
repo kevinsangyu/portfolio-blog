@@ -90,6 +90,7 @@ export default function CreatePost() {
           <Select onChange={(e)=>{setFormdata({...formdata, category: e.target.value})}}>
             {/* these categories are also in Search.jsx, if I wanted to hard code and change them. */}
             <option value="general">General</option>
+            <option value="projects">Projects</option>
             <option value="programming">Programming</option>
             <option value="career">Career</option>
             <option value="hobbies">Hobbies</option>
