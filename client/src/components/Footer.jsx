@@ -51,10 +51,10 @@ export default function FooterComponent() {
                     <div>
                         <Footer.Title title='Legal' />
                         <Footer.LinkGroup col>
-                            <Footer.Link href="https://github.com/kevinsangyu" target='_blank' rel='noopener noreferrer'>
+                            <Footer.Link href="https://www.termsfeed.com/live/d13bdb3d-36f9-4bef-b295-6456fa66d1d1" target='_blank' rel='noopener noreferrer'>
                                 Privacy Policy
                             </Footer.Link>
-                            <Footer.Link href="https://www.instagram.com/kevim3618/" target='_blank' rel='noopener noreferrer'>
+                            <Footer.Link href="" target='_blank' rel='noopener noreferrer'>
                                 Terms & Conditions
                             </Footer.Link>
                         </Footer.LinkGroup>
