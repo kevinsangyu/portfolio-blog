@@ -28,7 +28,6 @@ export const signup = async (req, res, next) => {
 
 export const signin = async (req, res, next) => {
     const { email, password } = req.body;
-    console.log("Signin request received with body: ", req.body)
 
     if (!email || !password || email === "" || password === "") {
         next(errorHandler(400, 'All fields are required'))
@@ -36,19 +35,19 @@ export const signin = async (req, res, next) => {
     try {
         const validUser = await User.findOne({ email })
         if (!validUser) {
-            return next(errorHandler(404, "User not found"))
-            // todo change to "Wrong credentials"
+            return next(errorHandler(404, "Invalid credentials"))
         }
         const validPassword = bcryptjs.compareSync(password, validUser.password)
         if (!validPassword) {
-            return next(errorHandler(400, "Invalid password"))
-            // todo change to "Wrong credentials"
+            return next(errorHandler(400, "Invalid credentials"))
         }
 
         const { password: _, ...user_info } = validUser._doc
 
-        const token = jwt.sign({ id:validUser._id, isAdmin: validUser.isAdmin }, process.env.JWTSECRET)
-        res.status(200).cookie('access_token', token, {httpOnly: true}).json(user_info)
+        const token = jwt.sign({ id:validUser._id, isAdmin: validUser.isAdmin }, process.env.JWTSECRET, {expiresIn: 8})
+        const refresh_token = jwt.sign({ id: validUser._id, isAdmin:validUser.isAdmin }, process.env.JWTREFRESH, {expiresIn: '60d'})
+
+        res.status(200).cookie('access_token', token, {httpOnly: true}).cookie('refresh_token', refresh_token, {httpOnly: true}).json(user_info)
     } catch (error) {
         next(error)
     }
@@ -61,7 +60,9 @@ export const google = async (req, res, next) => {
         const user = await User.findOne({email})
         if (user) {
             const token = jwt.sign({id: user._id, isAdmin: user.isAdmin}, process.env.JWTSECRET)
+            const refresh_token = jwt.sign({id: user._id, isAdmin:validUser.isAdmin}, process.env.JWTREFRESH, {expiresIn: '60d'})
             const {password, ...user_info} = user._doc
+            res.cookie('refresh_token', refresh_token, {httpOnly: true})
             res.status(200).cookie('access_token', token, {
                 httpOnly: true
             }).json(user_info)
@@ -75,11 +76,10 @@ export const google = async (req, res, next) => {
                 profilePicture: googlePhotoUrl
             })
             await newUser.save();
-            const token = jwt.sign({id: newUser._id, isAdmin: newUser.isAdmin}, process.env.JWTSECRET)
+            const token = jwt.sign({id: newUser._id, isAdmin: newUser.isAdmin}, process.env.JWTSECRET, {expiresIn: 8})
+            const refresh_token = jwt.sign({id: newUser._id, isAdmin:validUser.isAdmin}, process.env.JWTREFRESH, {expiresIn: '60d'})
             const {password, ...user_info} = user._doc
-            res.status(200).cookie('access_token', token, {
-                httpOnly: true
-            }).json(user_info)
+            res.status(200).cookie('access_token', token, {httpOnly: true}).cookie('refresh_token', refresh_token, {httpOnly: true}).json(user_info)
         }
     } catch (error) {
         next(error)
