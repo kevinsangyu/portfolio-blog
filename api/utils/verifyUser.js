@@ -12,7 +12,7 @@ export const verifyToken = (req, res, next) => {
                 if (err) { // the refresh token has expired, return an error
                     return next(errorHandler(401, 'Unauthorised, could not refresh access token, invalid access&refresh token'))
                 }
-                const newAccessToken = jwt.sign({id: user.id, isAdmin: user.isAdmin}, process.env.JWTSECRET, {expiresIn: 8})
+                const newAccessToken = jwt.sign({id: user.id, isAdmin: user.isAdmin}, process.env.JWTSECRET, {expiresIn: '1d'})
                 jwt.verify(newAccessToken, process.env.JWTSECRET, (err, user) => { // retry verification
                     if (err) {
                         return next(errorHandler(401, 'Unauthorised, failed to refresh access token'))
