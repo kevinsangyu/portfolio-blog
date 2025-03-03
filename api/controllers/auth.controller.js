@@ -60,12 +60,9 @@ export const google = async (req, res, next) => {
         const user = await User.findOne({email})
         if (user) {
             const token = jwt.sign({id: user._id, isAdmin: user.isAdmin}, process.env.JWTSECRET, {expiresIn: '1d'})
-            const refresh_token = jwt.sign({id: user._id, isAdmin:validUser.isAdmin}, process.env.JWTREFRESH, {expiresIn: '60d'})
+            const refresh_token = jwt.sign({id: user._id, isAdmin:user.isAdmin}, process.env.JWTREFRESH, {expiresIn: '60d'})
             const {password, ...user_info} = user._doc
-            res.cookie('refresh_token', refresh_token, {httpOnly: true})
-            res.status(200).cookie('access_token', token, {
-                httpOnly: true
-            }).json(user_info)
+            res.status(200).cookie('access_token', token, {httpOnly: true}).cookie('refresh_token', refresh_token, {httpOnly: true}).json(user_info)
         } else {
             const generatedPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8)
             const hashedPwd = bcryptjs.hashSync(generatedPassword, 12)
@@ -77,7 +74,7 @@ export const google = async (req, res, next) => {
             })
             await newUser.save();
             const token = jwt.sign({id: newUser._id, isAdmin: newUser.isAdmin}, process.env.JWTSECRET, {expiresIn: '1d'})
-            const refresh_token = jwt.sign({id: newUser._id, isAdmin:validUser.isAdmin}, process.env.JWTREFRESH, {expiresIn: '60d'})
+            const refresh_token = jwt.sign({id: newUser._id, isAdmin:newUser.isAdmin}, process.env.JWTREFRESH, {expiresIn: '60d'})
             const {password, ...user_info} = user._doc
             res.status(200).cookie('access_token', token, {httpOnly: true}).cookie('refresh_token', refresh_token, {httpOnly: true}).json(user_info)
         }
