@@ -1,8 +1,10 @@
 import { Button, Table, Modal } from "flowbite-react";
 import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { HiOutlineExclamationCircle } from 'react-icons/hi'
+import { useDispatch } from "react-redux";
+import { signInFailure, signOutSuccess } from '../redux/user/userSlice.js'
 
 export default function DashPosts() {
   const { currentUser } = useSelector((state) => state.user);
@@ -10,6 +12,8 @@ export default function DashPosts() {
   const [showMore, setShowMore] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [postIdToDelete, setPostIdToDelete] = useState('');
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
   useEffect(() => {
     const fetchPosts = async () => {
       try {
@@ -54,12 +58,30 @@ export default function DashPosts() {
       })
       const data = await res.json()
       if (!res.ok) {
+        if (res.status === 420) { // user info present in redux, but cookies have expired.
+          dispatch(signOutSuccess());
+          dispatch(signInFailure("You have been logged out. Please log back in."))
+        }
         console.log(data.message)
       } else {
         setUserPosts((prev) => prev.filter((post) => post._id !== postIdToDelete))
       }
     } catch (error) {
       console.log(error.message)
+    }
+  }
+  const handleUpdatePostButton = async (post) => {
+    try {
+      const res = await fetch(`/api/test/testsignedin`, {method: 'GET'})
+      const data = await res.json()
+      if (res.ok) {
+        navigate(`/update-post/${post._id}`)
+      } else if (res.status === 420) { // user info present in redux, but cookies have expired.
+        dispatch(signOutSuccess());
+        dispatch(signInFailure("You have been logged out. Please log back in."))
+      }
+    } catch (error) {
+      console.log(error)
     }
   }
   return (
@@ -113,12 +135,7 @@ export default function DashPosts() {
                     </span>
                   </Table.Cell>
                   <Table.Cell>
-                    <Link
-                      to={`/update-post/${post._id}`}
-                      className="text-teal-500 hover:underline"
-                    >
-                      <span>Edit</span>
-                    </Link>
+                    <span className="text-teal-500 hover:underline hover:cursor-pointer" onClick={() => handleUpdatePostButton(post)}>Edit</span>
                   </Table.Cell>
                 </Table.Row>
               </Table.Body>

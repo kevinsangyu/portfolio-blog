@@ -1,14 +1,15 @@
 import { Alert, Button, Modal, TextInput } from 'flowbite-react'
 import React, { useEffect, useRef, useState } from 'react'
 import {useSelector} from 'react-redux'
-import { updateStart, updateSuccess, updateFailure, deleteUserStart, deleteUserSuccess, deleteUserFailure, signOutSuccess } from '../redux/user/userSlice'
+import { updateStart, updateSuccess, updateFailure, deleteUserStart, deleteUserSuccess, deleteUserFailure, signOutSuccess, signInFailure } from '../redux/user/userSlice'
 import { useDispatch } from 'react-redux'
 import { HiOutlineExclamationCircle } from 'react-icons/hi'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {getDownloadURL, getStorage, ref, uploadBytesResumable} from 'firebase/storage'
 import { app } from '../firebase'
 import { CircularProgressbar } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
+
 
 export default function DashProfile() {
     const {currentUser, error, loading} = useSelector(state => state.user)
@@ -17,6 +18,7 @@ export default function DashProfile() {
     const [updateUserError, setUpdateUserError] = useState(null)
     const [showModal, setShowModal] = useState(false)
     const dispatch = useDispatch()
+    const navigate = useNavigate()
     const handleChange = (e) => {
         setFormData({...formData, [e.target.id]: e.target.value})
     }
@@ -43,6 +45,10 @@ export default function DashProfile() {
             })
             const data = await res.json()
             if (!res.ok) {
+                if (res.status === 420) { // user info present in redux, but cookies have expired.
+                    dispatch(signOutSuccess());
+                    dispatch(signInFailure("You have been logged out. Please log back in."))
+                }
                 dispatch(updateFailure(data.message))
                 setUpdateUserError(data.message)
             } else {
@@ -63,6 +69,10 @@ export default function DashProfile() {
             })
             const data = await res.json()
             if (!res.ok) {
+                if (res.status === 420) { // user info present in redux, but cookies have expired.
+                    dispatch(signOutSuccess());
+                    dispatch(signInFailure("You have been logged out. Please log back in."))
+                }
                 dispatch(deleteUserFailure(data.message))
             } else {
                 dispatch(deleteUserSuccess(data))
@@ -131,6 +141,20 @@ export default function DashProfile() {
             }
         )
     }
+    const handleCreatePostButton = async () => {
+        try {
+            const res = await fetch(`/api/test/testsignedin`, {method: 'GET'})
+            const data = await res.json()
+            if (res.ok) {
+                navigate('/create-post')
+            } else if (res.status === 420) { // user info present in redux, but cookies have expired.
+                dispatch(signOutSuccess());
+                dispatch(signInFailure("You have been logged out. Please log back in."))
+            }
+        } catch (error) {
+            console.log(error)
+        }
+    }
   return (
     <div className='max-w-lg mx-auto p-3 w-full'>
         <h1 className='my-7 text-center font-semibold text-3xl'>Profile</h1>
@@ -167,11 +191,9 @@ export default function DashProfile() {
                 {loading ? 'Loading...' : "Update"}
             </Button>
             {currentUser.isAdmin && (
-                <Link to={'/create-post'}>
-                <Button type='button' gradientDuoTone='purpleToPink' className='w-full'>
+                <Button type='button' gradientDuoTone='purpleToPink' className='w-full' onClick={handleCreatePostButton}>
                     Create a Post
                 </Button>
-                </Link>
             )}
         </form>
         <div className="text-red-500 flex justify-between mt-5">

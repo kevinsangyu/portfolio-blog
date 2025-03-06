@@ -25,7 +25,6 @@ export default function DashUsers() {
             setShowMore(false);
           }
         } else if (res.status === 420) { // user info present in redux, but cookies have expired.
-          console.log("Dispatching signout...");
           dispatch(signOutSuccess());
           dispatch(signInFailure("You have been logged out. Please log back in."))
         }
@@ -47,6 +46,9 @@ export default function DashUsers() {
         if (data.users.length < 9) {
           setShowMore(false);
         }
+      } else if (res.status === 420) { // user info present in redux, but cookies have expired.
+        dispatch(signOutSuccess());
+        dispatch(signInFailure("You have been logged out. Please log back in."))
       }
     } catch (error) {
       console.log(error);
@@ -59,7 +61,10 @@ export default function DashUsers() {
       });
       const data = await res.json();
       if (!res.ok) {
-
+        if (res.status === 420) { // user info present in redux, but cookies have expired.
+          dispatch(signOutSuccess());
+          dispatch(signInFailure("You have been logged out. Please log back in."))
+        }
       } else {
         setUsers((prev) => prev.filter((user) => user._id !== userIdToDelete))
         setShowModal(false)

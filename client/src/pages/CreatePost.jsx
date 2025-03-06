@@ -7,6 +7,8 @@ import { app } from "../firebase";
 import { CircularProgressbar } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { signInFailure, signOutSuccess } from '../redux/user/userSlice.js'
 
 export default function CreatePost() {
     const navigate = useNavigate()
@@ -15,6 +17,7 @@ export default function CreatePost() {
   const [imageUploadProgress, setImageUploadProgress] = useState(null);
   const [imageUploadError, setImageUploadError] = useState(null);
   const [publishError, setPublishError] = useState(null);
+  const dispatch = useDispatch()
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -28,8 +31,14 @@ export default function CreatePost() {
         })
         const data = await res.json()
         if (!res.ok) {
-            setPublishError(data.message)
-            return
+          // don't need this here, because to get to this page, token is verified anyway.
+          // if (res.status === 420) { // user info present in redux, but cookies have expired.
+          //   console.log("Dispatching signout...");
+          //   dispatch(signOutSuccess());
+          //   dispatch(signInFailure("You have been logged out. Please log back in."))
+          // }
+          setPublishError(data.message)
+          return
         } else {
             setPublishError(null)
             navigate(`/post/${data.slug}`)

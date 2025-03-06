@@ -4,6 +4,8 @@ import { useSelector } from 'react-redux'
 import { Link, useNavigate } from 'react-router-dom'
 import { HiOutlineExclamationCircle } from 'react-icons/hi'
 import Comment from './Comment'
+import { useDispatch } from "react-redux";
+import { signInFailure, signOutSuccess } from '../redux/user/userSlice.js'
 
 export default function CommentSection({postId}) {
     const { currentUser } = useSelector((state) => state.user)
@@ -13,6 +15,7 @@ export default function CommentSection({postId}) {
     const [showModal, setShowModal] = useState(false)
     const [commentToDelete, setCommentToDelete] = useState(null)
     const navigate = useNavigate()
+    const dispatch = useDispatch()
     const handleSubmit = async (e) => {
         e.preventDefault()
         setError(null)
@@ -32,6 +35,10 @@ export default function CommentSection({postId}) {
                 setComment('')
                 setComments([data, ...comments])
             } else {
+                if (res.status === 420) { // user info present in redux, but cookies have expired.
+                    dispatch(signOutSuccess());
+                    dispatch(signInFailure("You have been logged out. Please log back in."))
+                }
                 setError(data.message)
             }
         } catch (error) {
@@ -70,6 +77,9 @@ export default function CommentSection({postId}) {
                         numberOfLikes: data.likes.length
                     } : comment
                 )))
+            } else if (res.status === 420) { // user info present in redux, but cookies have expired.
+                dispatch(signOutSuccess());
+                dispatch(signInFailure("You have been logged out. Please log back in."))
             }
         } catch (error) {
             console.log(error)
@@ -81,6 +91,10 @@ export default function CommentSection({postId}) {
                 c._id === comment._id ? {...c, content: editedContent} : c
             )
         )
+    }
+    const handleError = async () => {
+        dispatch(signOutSuccess())
+        dispatch(signInFailure("You have been logged out. Please log back in."))
     }
     const handleDelete = async (commentId) => {
         setShowModal(false)
@@ -95,6 +109,9 @@ export default function CommentSection({postId}) {
             if (res.ok) {
                 const data = await res.json()
                 setComments(comments.filter((comment) => comment._id !== commentId))
+            } else if (res.status === 420) { // user info present in redux, but cookies have expired.
+                dispatch(signOutSuccess());
+                dispatch(signInFailure("You have been logged out. Please log back in."))
             }
         } catch (error) {
             console.log(error)
@@ -144,7 +161,7 @@ export default function CommentSection({postId}) {
             </div>
             {
                 comments.map((comment) => (
-                    <Comment key={comment._id} comment={comment} onLike={handleLike} onEdit={handleEdit} onDelete={(commentId) => {setShowModal(true);setCommentToDelete(commentId)}}/>
+                    <Comment key={comment._id} comment={comment} onLike={handleLike} onEdit={handleEdit} onDelete={(commentId) => {setShowModal(true);setCommentToDelete(commentId)}} onError={handleError} />
                 ))
             }
             </>
