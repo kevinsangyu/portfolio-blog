@@ -7,7 +7,6 @@ dotenv.config()
 
 export const signup = async (req, res, next) => {
     const { username, email, password } = req.body;
-    console.log("Signup request received with body: ", req.body)
 
     if (!username || !email || !password || username === "" || email === "" || password === "") {
         next(errorHandler(400, 'All fields are required'))
@@ -20,7 +19,8 @@ export const signup = async (req, res, next) => {
     })
     try {
         await newUser.save()
-        res.json({message: "Signup successful.", user: {...newUser._doc}})
+        const {password, ...user_info} = newUser._doc
+        res.json({message: "Signup successful.", user: {...user_info}})
     } catch (error) {
         next(error)
     }
@@ -43,11 +43,12 @@ export const signin = async (req, res, next) => {
         }
 
         const { password: _, ...user_info } = validUser._doc
-
-        const token = jwt.sign({ id:validUser._id, isAdmin: validUser.isAdmin }, process.env.JWTSECRET, {expiresIn: '1d'})
+        console.log(`tokenexpiry: ${process.env.TOKENEXPIRY}`)
+        const token = jwt.sign({ id:validUser._id, isAdmin: validUser.isAdmin }, process.env.JWTSECRET, {expiresIn: process.env.TOKENEXPIRY})
         const refresh_token = jwt.sign({ id: validUser._id, isAdmin:validUser.isAdmin }, process.env.JWTREFRESH, {expiresIn: '60d'})
 
-        res.status(200).cookie('access_token', token, {httpOnly: true}).cookie('refresh_token', refresh_token, {httpOnly: true}).json(user_info)
+        res.status(200).cookie('access_token', token, {httpOnly: true, maxAge: process.env.TOKENMAXAGE})
+                       .cookie('refresh_token', refresh_token, {httpOnly: true, maxAge: 60*24*60*60*1000}).json(user_info)
     } catch (error) {
         next(error)
     }
@@ -59,10 +60,11 @@ export const google = async (req, res, next) => {
     try {
         const user = await User.findOne({email})
         if (user) {
-            const token = jwt.sign({id: user._id, isAdmin: user.isAdmin}, process.env.JWTSECRET, {expiresIn: '1d'})
+            const token = jwt.sign({id: user._id, isAdmin: user.isAdmin}, process.env.JWTSECRET, {expiresIn: process.env.TOKENEXPIRY})
             const refresh_token = jwt.sign({id: user._id, isAdmin:user.isAdmin}, process.env.JWTREFRESH, {expiresIn: '60d'})
             const {password, ...user_info} = user._doc
-            res.status(200).cookie('access_token', token, {httpOnly: true}).cookie('refresh_token', refresh_token, {httpOnly: true}).json(user_info)
+            res.status(200).cookie('access_token', token, {httpOnly: true, maxAge: process.env.TOKENMAXAGE})
+                           .cookie('refresh_token', refresh_token, {httpOnly: true, maxAge: 60*24*60*60*1000}).json(user_info)
         } else {
             const generatedPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8)
             const hashedPwd = bcryptjs.hashSync(generatedPassword, 12)
@@ -73,10 +75,11 @@ export const google = async (req, res, next) => {
                 profilePicture: googlePhotoUrl
             })
             await newUser.save();
-            const token = jwt.sign({id: newUser._id, isAdmin: newUser.isAdmin}, process.env.JWTSECRET, {expiresIn: '1d'})
+            const token = jwt.sign({id: newUser._id, isAdmin: newUser.isAdmin}, process.env.JWTSECRET, {expiresIn: process.env.TOKENEXPIRY})
             const refresh_token = jwt.sign({id: newUser._id, isAdmin:newUser.isAdmin}, process.env.JWTREFRESH, {expiresIn: '60d'})
             const {password, ...user_info} = user._doc
-            res.status(200).cookie('access_token', token, {httpOnly: true}).cookie('refresh_token', refresh_token, {httpOnly: true}).json(user_info)
+            res.status(200).cookie('access_token', token, {httpOnly: true, maxAge: process.env.TOKENMAXAGE})
+                           .cookie('refresh_token', refresh_token, {httpOnly: true, maxAge: 60*24*60*60*1000}).json(user_info)
         }
     } catch (error) {
         next(error)
