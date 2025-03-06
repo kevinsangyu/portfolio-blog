@@ -58,6 +58,12 @@ export default function UpdatePost() {
       );
       const data = await res.json();
       if (!res.ok) {
+        // don't need this here, because to get to this page, token is verified anyway.
+        // if (res.status === 420) { // user info present in redux, but cookies have expired.
+        //   console.log("Dispatching signout...");
+        //   dispatch(signOutSuccess());
+        //   dispatch(signInFailure("You have been logged out. Please log back in."))
+        // }
         setPublishError(data.message);
         return;
       } else {

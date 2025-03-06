@@ -4,6 +4,8 @@ import { useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { HiOutlineExclamationCircle } from "react-icons/hi";
 import { FaCheck, FaTimes } from "react-icons/fa";
+import { useDispatch } from "react-redux";
+import { signInFailure, signOutSuccess } from '../redux/user/userSlice.js'
 
 export default function DashUsers() {
   const { currentUser } = useSelector((state) => state.user);
@@ -11,6 +13,7 @@ export default function DashUsers() {
   const [showMore, setShowMore] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [userIdToDelete, setUserIdToDelete] = useState("");
+  const dispatch = useDispatch()
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -21,6 +24,9 @@ export default function DashUsers() {
           if (data.users.length < 9) {
             setShowMore(false);
           }
+        } else if (res.status === 420) { // user info present in redux, but cookies have expired.
+          dispatch(signOutSuccess());
+          dispatch(signInFailure("You have been logged out. Please log back in."))
         }
       } catch (error) {
         console.log(error.message);
@@ -40,6 +46,9 @@ export default function DashUsers() {
         if (data.users.length < 9) {
           setShowMore(false);
         }
+      } else if (res.status === 420) { // user info present in redux, but cookies have expired.
+        dispatch(signOutSuccess());
+        dispatch(signInFailure("You have been logged out. Please log back in."))
       }
     } catch (error) {
       console.log(error);
@@ -52,7 +61,10 @@ export default function DashUsers() {
       });
       const data = await res.json();
       if (!res.ok) {
-
+        if (res.status === 420) { // user info present in redux, but cookies have expired.
+          dispatch(signOutSuccess());
+          dispatch(signInFailure("You have been logged out. Please log back in."))
+        }
       } else {
         setUsers((prev) => prev.filter((user) => user._id !== userIdToDelete))
         setShowModal(false)

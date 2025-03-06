@@ -3,6 +3,8 @@ import { useSelector } from 'react-redux'
 import { HiAnnotation, HiArrowNarrowUp, HiDocumentText, HiOutlineUserGroup } from 'react-icons/hi'
 import { Button, Table } from 'flowbite-react'
 import { Link } from 'react-router-dom'
+import { useDispatch } from "react-redux";
+import { signInFailure, signOutSuccess } from '../redux/user/userSlice.js'
 
 export default function DashboardComp() {
     const [users, setUsers] = useState([])
@@ -15,6 +17,7 @@ export default function DashboardComp() {
     const [lastMonthComments, setLastMonthComments] = useState(0)
     const [lastMonthPosts, setLastMonthPosts] = useState(0)
     const { currentUser } = useSelector((state) => state.user)
+    const dispatch = useDispatch()
     useEffect(() => {
         const fetchUsers = async () => {
             try {
@@ -24,6 +27,9 @@ export default function DashboardComp() {
                   setUsers(data.users);
                   setTotalUsers(data.totalUsers)
                   setLastMonthUsers(data.lastMonthUsers)
+                } else if (res.status === 420) { // user info present in redux, but cookies have expired.
+                    dispatch(signOutSuccess());
+                    dispatch(signInFailure("You have been logged out. Please log back in."))
                 }
               } catch (error) {
                 console.log(error.message);
@@ -37,6 +43,9 @@ export default function DashboardComp() {
                   setComments(data.comments);
                   setTotalComments(data.totalComments)
                   setLastMonthComments(data.lastMonthComments)
+                } else if (res.status === 420) { // user info present in redux, but cookies have expired.
+                    dispatch(signOutSuccess());
+                    dispatch(signInFailure("You have been logged out. Please log back in."))
                 }
               } catch (error) {
                 console.log(error.message);
