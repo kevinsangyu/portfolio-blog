@@ -1,5 +1,5 @@
 import { Button, FileInput, Select, TextInput, Alert } from "flowbite-react";
-import React, { useState, useRef, useMemo } from "react";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import {
@@ -25,7 +25,7 @@ export default function CreatePost() {
   const [imageUploadError, setImageUploadError] = useState(null);
   const [publishError, setPublishError] = useState(null);
   const dispatch = useDispatch();
-  console.log(inTextImageProgress);
+  console.log(formdata)
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -55,43 +55,81 @@ export default function CreatePost() {
       setPublishError(`Could not publish: ${error.message}`);
     }
   };
+  const uploadImage = async (file, face) => {
+    // handles uploading images to firebase
+    // face is a boolean switch that refers to if the uploaded image is of the face image of the blog/post
+    if (!file) {
+      return
+    } else {
+      return new Promise((resolve, reject) => {
+        // returns a promise to ensure that it will wait for the image to finish uploading
+        const storage = getStorage(app);
+        const fileName = new Date().getTime() + "-" + file.name;
+        const storageRef = ref(storage, fileName);
+        const uploadTask = uploadBytesResumable(storageRef, file);
+        uploadTask.on(
+          "state_changed",
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            if (face) {
+              setImageUploadProgress(progress.toFixed(0));
+            } else {
+              setInTextImageProgress(progress.toFixed(0))
+            }
+          },
+          (error) => {
+            setImageUploadError(`Could not upload image: ${error}`);
+            if (face) {
+              setImageUploadProgress(null);
+            } else {
+              setInTextImageProgress(null)
+            }
+            reject(error)
+          },
+          async () => {
+            try {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref)
+              if (face) {
+                setImageUploadProgress(null);
+              } else {
+                setInTextImageProgress(null)
+              }
+              setImageUploadError(null)
+              resolve(downloadURL)
+            } catch (error) {
+              reject(error)
+            }
+          }
+        );
+      })
+    }
+  }
+  const insertImage = (url) => {
+    // if the image is added to the reactquill textbox, insert the image into the reactquill textbox at the cursor
+    const quilleditor = quillRef?.current?.getEditor()
+    if (quilleditor) {
+      const range = quilleditor.getSelection()
+      quilleditor.insertEmbed(range.index, "image", url)
+    }
+  }
   const handleUploadImage = async () => {
+    // handles uploading the main image (face image) of the blog/post
     try {
       setImageUploadError(null);
       if (!file) {
         setImageUploadError("Please select an image");
         return;
       }
-      const storage = getStorage(app);
-      const fileName = new Date().getTime() + "-" + file.name;
-      const storageRef = ref(storage, fileName);
-      const uploadTask = uploadBytesResumable(storageRef, file);
-      uploadTask.on(
-        "state_changed",
-        (snapshot) => {
-          const progress =
-            (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setImageUploadProgress(progress.toFixed(0));
-        },
-        (error) => {
-          setImageUploadError(`Could not upload image: ${error}`);
-          setImageUploadProgress(null);
-        },
-        () => {
-          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-            setImageUploadProgress(null);
-            setImageUploadError(null);
-            setFormdata({ ...formdata, image: downloadURL });
-          });
-        }
-      );
+      const url = await uploadImage(file, true)
+      setFormdata({...formdata, image: url})
     } catch (error) {
       console.log(error);
       setImageUploadError(`Could not upload image: ${error}`);
       setImageUploadProgress(null);
     }
   };
-  const quillImageHandler = async () => {
+  const quillImageButton = async () => {
+    // handles the image upload for the button on the reactquill's ribbon
     const input = document.createElement("input");
     input.setAttribute("type", "file");
     input.setAttribute("accept", "image/*");
@@ -102,49 +140,69 @@ export default function CreatePost() {
       if (!file) {
         return;
       }
-      const storage = getStorage(app);
-      const fileName = new Date().getTime() + "-" + file.name;
-      const storageRef = ref(storage, fileName);
-      const uploadTask = uploadBytesResumable(storageRef, file);
-      uploadTask.on(
-        "state_changed",
-        (snapshot) => {
-          const progress =
-            (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setInTextImageProgress(progress.toFixed(0));
-        },
-        (error) => {
-          setImageUploadError(`Could not upload image: ${error}`);
-          setInTextImageProgress(null);
-        },
-        () => {
-          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-            setInTextImageProgress(null);
-            setImageUploadError(null);
-            const quilleditor = quillRef?.current?.getEditor();
-            if (quilleditor) {
-              const range = quilleditor?.getSelection();
-              quilleditor.insertEmbed(range.index, "image", downloadURL);
-            }
-            console.log("Image uploaded: ", downloadURL);
-          });
-        }
-      );
+      const url = await uploadImage(file, false)
+      insertImage(url)
     };
   };
+  useEffect(() => {
+    // alters the image paste and drag/drop method of inserting images
+    const quilleditor = quillRef?.current?.getEditor()
+    if (!quilleditor) {
+      return
+    }
+    quilleditor.clipboard.addMatcher("img", async (node, delta) => {
+      const src = node.getAttribute("src")
+
+      if (src.startsWith("http")) {
+        return delta
+      } else {
+        const blob = await fetch(src).then((res) => res.blob())
+        const file = new File([blob], "pasted-image.png", {type: "image/png"})
+        const url = await uploadImage(file, false)
+        return {ops: [{insert: {image: url}}]}
+      }
+    })
+
+    quilleditor.root.addEventListener("drop", async (event) => {
+      event.preventDefault()
+      if (!event.dataTransfer.files.length) {
+        return
+      } else {
+        const file = event.dataTransfer.files[0]
+        const url = await uploadImage(file, false)
+        insertImage(url)
+      }
+    })
+
+    quilleditor.root.addEventListener("paste", async (e) => {
+      const clipboardItems = e.clipboardData.items
+      for (const item of clipboardItems) {
+        if (item.type.startsWith("image")) {
+          e.preventDefault()
+          const file = item.getAsFile()
+          const url = await uploadImage(file)
+          insertImage(url)
+        }
+      }
+    })
+  }, [])
   const quillmodules = useMemo(() => (
+    // useMemo() is used so react doesn't re-render the component, which makes it disappear.
   {
     toolbar: {
       container: [
-        [{ header: [1, 2, false] }],
-        ["bold", "italic", "underline", "strike"],
+        [{ header: [1, 2, 3, 4, 5, false] }],
+        ["bold", "italic", "underline", "strike", "link"],
         [{ list: "ordered" }, { list: "bullet" }],
         ["image"],
       ],
       handlers: {
-        image: quillImageHandler,
+        image: quillImageButton,
       },
     },
+    clipboard: {
+      matchVisual: false
+    }
   }), []);
   return (
     <div className="p-3 max-w-3xl mx-auto min-h-screen">
