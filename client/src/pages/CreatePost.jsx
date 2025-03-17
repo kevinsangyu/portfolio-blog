@@ -1,90 +1,211 @@
 import { Button, FileInput, Select, TextInput, Alert } from "flowbite-react";
-import React, { useState } from "react";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
-import { getStorage, uploadBytesResumable, ref, getDownloadURL } from "firebase/storage";
+import {
+  getStorage,
+  uploadBytesResumable,
+  ref,
+  getDownloadURL,
+} from "firebase/storage";
 import { app } from "../firebase";
 import { CircularProgressbar } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { signInFailure, signOutSuccess } from '../redux/user/userSlice.js'
+import { signInFailure, signOutSuccess } from "../redux/user/userSlice.js";
 
 export default function CreatePost() {
-    const navigate = useNavigate()
+  const navigate = useNavigate();
+  const quillRef = useRef()
   const [file, setFile] = useState(null);
-  const [formdata, setFormdata] = useState({category: "general"});
+  const [formdata, setFormdata] = useState({ category: "general" });
   const [imageUploadProgress, setImageUploadProgress] = useState(null);
+  const [inTextImageProgress, setInTextImageProgress] = useState(null);
   const [imageUploadError, setImageUploadError] = useState(null);
   const [publishError, setPublishError] = useState(null);
-  const dispatch = useDispatch()
+  const dispatch = useDispatch();
+  console.log(formdata)
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {  
-        const res = await fetch('/api/post/create', {
-            method: "POST",
-            headers: {
-                'Content-Type': "application/json"
-            },
-            body: JSON.stringify(formdata)
-        })
-        const data = await res.json()
-        if (!res.ok) {
-          // don't need this here, because to get to this page, token is verified anyway.
-          // if (res.status === 420) { // user info present in redux, but cookies have expired.
-          //   console.log("Dispatching signout...");
-          //   dispatch(signOutSuccess());
-          //   dispatch(signInFailure("You have been logged out. Please log back in."))
-          // }
-          setPublishError(data.message)
-          return
-        } else {
-            setPublishError(null)
-            navigate(`/post/${data.slug}`)
-        }
+    try {
+      const res = await fetch("/api/post/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formdata),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        // don't need this here, because to get to this page, token is verified anyway.
+        // if (res.status === 420) { // user info present in redux, but cookies have expired.
+        //   console.log("Dispatching signout...");
+        //   dispatch(signOutSuccess());
+        //   dispatch(signInFailure("You have been logged out. Please log back in."))
+        // }
+        setPublishError(data.message);
+        return;
+      } else {
+        setPublishError(null);
+        navigate(`/post/${data.slug}`);
+      }
     } catch (error) {
-        setPublishError(`Could not publish: ${error.message}`)
+      setPublishError(`Could not publish: ${error.message}`);
     }
   };
+  const uploadImage = async (file, face) => {
+    // handles uploading images to firebase
+    // face is a boolean switch that refers to if the uploaded image is of the face image of the blog/post
+    if (!file) {
+      return
+    } else {
+      return new Promise((resolve, reject) => {
+        // returns a promise to ensure that it will wait for the image to finish uploading
+        const storage = getStorage(app);
+        const fileName = new Date().getTime() + "-" + file.name;
+        const storageRef = ref(storage, fileName);
+        const uploadTask = uploadBytesResumable(storageRef, file);
+        uploadTask.on(
+          "state_changed",
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            if (face) {
+              setImageUploadProgress(progress.toFixed(0));
+            } else {
+              setInTextImageProgress(progress.toFixed(0))
+            }
+          },
+          (error) => {
+            setImageUploadError(`Could not upload image: ${error}`);
+            if (face) {
+              setImageUploadProgress(null);
+            } else {
+              setInTextImageProgress(null)
+            }
+            reject(error)
+          },
+          async () => {
+            try {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref)
+              if (face) {
+                setImageUploadProgress(null);
+              } else {
+                setInTextImageProgress(null)
+              }
+              setImageUploadError(null)
+              resolve(downloadURL)
+            } catch (error) {
+              reject(error)
+            }
+          }
+        );
+      })
+    }
+  }
+  const insertImage = (url) => {
+    // if the image is added to the reactquill textbox, insert the image into the reactquill textbox at the cursor
+    const quilleditor = quillRef?.current?.getEditor()
+    if (quilleditor) {
+      const range = quilleditor.getSelection()
+      quilleditor.insertEmbed(range.index, "image", url)
+    }
+  }
   const handleUploadImage = async () => {
+    // handles uploading the main image (face image) of the blog/post
     try {
       setImageUploadError(null);
       if (!file) {
         setImageUploadError("Please select an image");
         return;
       }
-      const storage = getStorage(app);
-      const fileName = new Date().getTime() + "-" + file.name;
-      const storageRef = ref(storage, fileName);
-      const uploadTask = uploadBytesResumable(storageRef, file);
-      uploadTask.on(
-        "state_changed",
-        (snapshot) => {
-          const progress =
-            (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setImageUploadProgress(progress.toFixed(0));
-        },
-        (error) => {
-          setImageUploadError(`Could not upload image: ${error}`);
-          setImageUploadProgress(null);
-        },
-        () => {
-          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-            setImageUploadProgress(null);
-            setImageUploadError(null);
-            setFormdata({ ...formdata, image: downloadURL });
-          });
-        }
-      );
+      const url = await uploadImage(file, true)
+      setFormdata({...formdata, image: url})
     } catch (error) {
       console.log(error);
       setImageUploadError(`Could not upload image: ${error}`);
       setImageUploadProgress(null);
     }
   };
+  const quillImageButton = async () => {
+    // handles the image upload for the button on the reactquill's ribbon
+    const input = document.createElement("input");
+    input.setAttribute("type", "file");
+    input.setAttribute("accept", "image/*");
+    input.click();
+
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file) {
+        return;
+      }
+      const url = await uploadImage(file, false)
+      insertImage(url)
+    };
+  };
+  useEffect(() => {
+    // alters the image paste and drag/drop method of inserting images
+    const quilleditor = quillRef?.current?.getEditor()
+    if (!quilleditor) {
+      return
+    }
+    quilleditor.clipboard.addMatcher("img", async (node, delta) => {
+      const src = node.getAttribute("src")
+
+      if (src.startsWith("http")) {
+        return delta
+      } else {
+        const blob = await fetch(src).then((res) => res.blob())
+        const file = new File([blob], "pasted-image.png", {type: "image/png"})
+        const url = await uploadImage(file, false)
+        return {ops: [{insert: {image: url}}]}
+      }
+    })
+
+    quilleditor.root.addEventListener("drop", async (event) => {
+      event.preventDefault()
+      if (!event.dataTransfer.files.length) {
+        return
+      } else {
+        const file = event.dataTransfer.files[0]
+        const url = await uploadImage(file, false)
+        insertImage(url)
+      }
+    })
+
+    quilleditor.root.addEventListener("paste", async (e) => {
+      const clipboardItems = e.clipboardData.items
+      for (const item of clipboardItems) {
+        if (item.type.startsWith("image")) {
+          e.preventDefault()
+          const file = item.getAsFile()
+          const url = await uploadImage(file)
+          insertImage(url)
+        }
+      }
+    })
+  }, [])
+  const quillmodules = useMemo(() => (
+    // useMemo() is used so react doesn't re-render the component, which makes it disappear.
+  {
+    toolbar: {
+      container: [
+        [{ header: [1, 2, 3, 4, 5, false] }],
+        ["bold", "italic", "underline", "strike", "link"],
+        [{ list: "ordered" }, { list: "bullet" }],
+        ["image"],
+      ],
+      handlers: {
+        image: quillImageButton,
+      },
+    },
+    clipboard: {
+      matchVisual: false
+    }
+  }), []);
   return (
-    <div className="p-3 max-w-3xl mx-auto min-h-screen">
+    <div className="p-3 max-w-5xl mx-auto min-h-screen">
       <h1 className="text-center text-3xl my-7 font-semibold">Create a post</h1>
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
         <div className="flex flex-col gap-4 sm:flex-row justify-between">
@@ -94,9 +215,15 @@ export default function CreatePost() {
             required
             id="title"
             className="flex-1"
-            onChange={(e)=>{setFormdata({...formdata, title: e.target.value})}}
+            onChange={(e) => {
+              setFormdata({ ...formdata, title: e.target.value });
+            }}
           />
-          <Select onChange={(e)=>{setFormdata({...formdata, category: e.target.value})}}>
+          <Select
+            onChange={(e) => {
+              setFormdata({ ...formdata, category: e.target.value });
+            }}
+          >
             {/* these categories are also in Search.jsx, if I wanted to hard code and change them. */}
             <option value="general">General</option>
             <option value="projects">Projects</option>
@@ -132,22 +259,36 @@ export default function CreatePost() {
             )}
           </Button>
         </div>
-        {imageUploadError && (<Alert color='failure'>{imageUploadError}</Alert>)}
-        {formdata.image && (<img src={formdata.image} alt='upload' className="w-full h-72 object-cover"/>)}
+        {imageUploadError && <Alert color="failure">{imageUploadError}</Alert>}
+        {formdata.image && (
+          <img
+            src={formdata.image}
+            alt="upload"
+            className="w-full h-72 object-cover"
+          />
+        )}
         <ReactQuill
+        ref={quillRef}
           theme="snow"
           placeholder="Write something..."
-          className="h-72 mb-12"
+          style={{height: 800}}
+          className="h-120 mb-12"
           required
-          onChange={(value)=>{setFormdata({...formdata, content: value})}}
+          onChange={(value) => {
+            setFormdata({ ...formdata, content: value });
+          }}
+          modules={quillmodules}
         />
-        <Button
-          type="submit"
-          gradientDuoTone="purpleToPink"
-        >
+        {inTextImageProgress && (
+          <div className="min-w-full flex flex-col">
+            <span>Uploading image...</span>
+            <progress value={inTextImageProgress} max={100} className="min-w-full"/>
+          </div>
+        )}
+        <Button type="submit" gradientDuoTone="purpleToPink">
           Publish
         </Button>
-        {publishError && (<Alert color="failure">{publishError}</Alert>)}
+        {publishError && <Alert color="failure">{publishError}</Alert>}
       </form>
     </div>
   );
