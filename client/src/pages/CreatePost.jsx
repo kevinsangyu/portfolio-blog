@@ -205,7 +205,7 @@ export default function CreatePost() {
     }
   }), []);
   return (
-    <div className="p-3 max-w-3xl mx-auto min-h-screen">
+    <div className="p-3 max-w-5xl mx-auto min-h-screen">
       <h1 className="text-center text-3xl my-7 font-semibold">Create a post</h1>
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
         <div className="flex flex-col gap-4 sm:flex-row justify-between">
@@ -271,7 +271,8 @@ export default function CreatePost() {
         ref={quillRef}
           theme="snow"
           placeholder="Write something..."
-          className="h-72 mb-12"
+          style={{height: 800}}
+          className="h-120 mb-12"
           required
           onChange={(value) => {
             setFormdata({ ...formdata, content: value });
