@@ -15,6 +15,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 
 export default function UpdatePost() {
+  // it cant be an issue with loading in images... the live service version can load in images just fine...
+  // the data is fetched correctly...
+  // try removing certain parts to see if it changes things, starting from the drag-drop and copy-paste functionalities...
   const navigate = useNavigate();
   const quillRef = useRef()
   const { currentUser } = useSelector((state) => state.user);
@@ -25,6 +28,7 @@ export default function UpdatePost() {
   const [imageUploadError, setImageUploadError] = useState(null);
   const [publishError, setPublishError] = useState(null);
   const { postId } = useParams();
+  console.log(formdata)
   useEffect(() => {
     try {
       const fetchPost = async () => {
@@ -35,7 +39,6 @@ export default function UpdatePost() {
           setPublishError(data.message);
           return;
         } else {
-          console.log("Data fetched...", data.posts[0].content)
           setPublishError(null);
           setFormdata(data.posts[0]);
         }
