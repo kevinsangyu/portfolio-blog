@@ -12,8 +12,6 @@ import { app } from "../firebase";
 import { CircularProgressbar } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
 import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
-import { signInFailure, signOutSuccess } from "../redux/user/userSlice.js";
 
 export default function CreatePost() {
   const navigate = useNavigate();
@@ -24,8 +22,6 @@ export default function CreatePost() {
   const [inTextImageProgress, setInTextImageProgress] = useState(null);
   const [imageUploadError, setImageUploadError] = useState(null);
   const [publishError, setPublishError] = useState(null);
-  const dispatch = useDispatch();
-  console.log(formdata)
 
   const handleSubmit = async (e) => {
     e.preventDefault();
