@@ -28,7 +28,6 @@ export default function UpdatePost() {
   const [imageUploadError, setImageUploadError] = useState(null);
   const [publishError, setPublishError] = useState(null);
   const { postId } = useParams();
-  console.log(formdata)
   useEffect(() => {
     try {
       const fetchPost = async () => {
@@ -172,20 +171,9 @@ export default function UpdatePost() {
     // alters the image paste and drag/drop method of inserting images
     const quilleditor = quillRef?.current?.getEditor()
     if (!quilleditor) {
+      console.log("Unable to get quill reference")
       return
     }
-    quilleditor.clipboard.addMatcher("img", async (node, delta) => {
-      const src = node.getAttribute("src")
-
-      if (src.startsWith("http")) {
-        return delta
-      } else {
-        const blob = await fetch(src).then((res) => res.blob())
-        const file = new File([blob], "pasted-image.png", {type: "image/png"})
-        const url = await uploadImage(file, false)
-        return {ops: [{insert: {image: url}}]}
-      }
-    })
 
     quilleditor.root.addEventListener("drop", async (event) => {
       event.preventDefault()
