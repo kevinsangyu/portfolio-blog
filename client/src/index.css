@@ -10,6 +10,14 @@ body {
     font-size: 1.05rem
 }
 
+.ql-video{
+    width: 384px;
+    height: 216px;
+    border-radius: 8px;
+    margin: 10px auto;
+    allowfullscreen: false;
+}
+
 .post-content p{
     margin-bottom: 0.5rem
 }

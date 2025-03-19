@@ -21,10 +21,11 @@ export default function UpdatePost() {
   const navigate = useNavigate();
   const quillRef = useRef()
   const { currentUser } = useSelector((state) => state.user);
-  const [file, setFile] = useState(null);
+  const [faceImage, setFaceImage] = useState(null);
   const [formdata, setFormdata] = useState({ title: "", category: "general", content: "", image: "" });
   const [imageUploadProgress, setImageUploadProgress] = useState(null);
-  const [inTextImageProgress, setInTextImageProgress] = useState(null);
+  const [inTextMediaProgress, setInTextMediaProgress] = useState(null);
+  const [inTextMediaName, setInTextMediaName] = useState("");
   const [imageUploadError, setImageUploadError] = useState(null);
   const [publishError, setPublishError] = useState(null);
   const { postId } = useParams();
@@ -79,7 +80,7 @@ export default function UpdatePost() {
       setPublishError(`Could not update: ${error.message}`);
     }
   };
-  const uploadImage = async (file, face) => {
+  const uploadMedia = async (file, face) => {
     // handles uploading images to firebase
     // face is a boolean switch that refers to if the uploaded image is of the face image of the blog/post
     if (!file) {
@@ -98,7 +99,8 @@ export default function UpdatePost() {
             if (face) {
               setImageUploadProgress(progress.toFixed(0));
             } else {
-              setInTextImageProgress(progress.toFixed(0))
+              setInTextMediaProgress(progress.toFixed(0))
+              setInTextMediaName(`${file.name} as ${fileName}`)
             }
           },
           (error) => {
@@ -106,7 +108,8 @@ export default function UpdatePost() {
             if (face) {
               setImageUploadProgress(null);
             } else {
-              setInTextImageProgress(null)
+              setInTextMediaProgress(null)
+              setInTextMediaName(null)
             }
             reject(error)
           },
@@ -116,7 +119,8 @@ export default function UpdatePost() {
               if (face) {
                 setImageUploadProgress(null);
               } else {
-                setInTextImageProgress(null)
+                setInTextMediaProgress(null)
+                setInTextMediaName(null)
               }
               setImageUploadError(null)
               resolve(downloadURL)
@@ -128,26 +132,26 @@ export default function UpdatePost() {
       })
     }
   }
-  const insertImage = (url) => {
+  const insertMedia = (url, type) => {
     // if the image is added to the reactquill textbox, insert the image into the reactquill textbox at the cursor
     const quilleditor = quillRef?.current?.getEditor()
     if (quilleditor) {
       const range = quilleditor.getSelection()
-      quilleditor.insertEmbed(range.index, "image", url)
+      quilleditor.insertEmbed(range.index, type, url)
     }
   }
   const handleUploadImage = async () => {
     try {
       setImageUploadError(null);
-      if (!file) {
+      if (!faceImage) {
         setImageUploadError("Please select an image");
         return;
       }
-      const url = await uploadImage(file, true)
+      const url = await uploadMedia(faceImage, true)
       setFormdata({...formdata, image: url})
     } catch (error) {
       console.log(error);
-      setImageUploadError(`Could not upload image: ${error}`);
+      setImageUploadError(`Could not upload face image: ${error}`);
       setImageUploadProgress(null);
     }
   };
@@ -163,15 +167,35 @@ export default function UpdatePost() {
       if (!file) {
         return;
       }
-      const url = await uploadImage(file, false)
-      insertImage(url)
+      const url = await uploadMedia(file, false)
+      insertMedia(url, "image")
+    };
+  };
+  const quillVideoButton = async () => {
+    // handles the image upload for the button on the reactquill's ribbon
+    const input = document.createElement("input");
+    input.setAttribute("type", "file");
+    input.setAttribute("accept", "video/*");
+    input.click();
+
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file) {
+        return;
+      }
+      const url = await uploadMedia(file, false)
+      insertMedia(url, "video")
     };
   };
   useEffect(() => {
+    // the clipboard.addMatcher method causes an error where it prevents the textbox from being populated
+    // with content, so it has been removed. This just means that I cannot copy/paste images that are already
+    // being hosted elsewhere, and I have to upload it from my device instead.
+    // todo: fix this issue
+
     // alters the image paste and drag/drop method of inserting images
     const quilleditor = quillRef?.current?.getEditor()
     if (!quilleditor) {
-      console.log("Unable to get quill reference")
       return
     }
 
@@ -181,19 +205,21 @@ export default function UpdatePost() {
         return
       } else {
         const file = event.dataTransfer.files[0]
-        const url = await uploadImage(file, false)
-        insertImage(url)
+        const type = file.type.startsWith("video") ? "video" : "image"
+        const url = await uploadMedia(file, false)
+        insertMedia(url, type)
       }
     })
 
     quilleditor.root.addEventListener("paste", async (e) => {
       const clipboardItems = e.clipboardData.items
       for (const item of clipboardItems) {
-        if (item.type.startsWith("image")) {
+        if (item.type.startsWith("image") || item.type.startsWith("video")) {
           e.preventDefault()
           const file = item.getAsFile()
-          const url = await uploadImage(file)
-          insertImage(url)
+          const type = file.type.startsWith("video") ? "video" : "image"
+          const url = await uploadMedia(file)
+          insertMedia(url, type)
         }
       }
     })
@@ -206,10 +232,11 @@ export default function UpdatePost() {
         [{ header: [1, 2, 3, 4, 5, false] }],
         ["bold", "italic", "underline", "strike", "link"],
         [{ list: "ordered" }, { list: "bullet" }],
-        ["image"],
+        ["image", "video"],
       ],
       handlers: {
         image: quillImageButton,
+        video: quillVideoButton,
       },
     },
     clipboard: {
@@ -249,7 +276,7 @@ export default function UpdatePost() {
           <FileInput
             type="file"
             accept=";image/*"
-            onChange={(e) => setFile(e.target.files[0])}
+            onChange={(e) => setFaceImage(e.target.files[0])}
           />
           <Button
             type="button"
@@ -292,10 +319,10 @@ export default function UpdatePost() {
           }}
           modules={quillmodules}
         />
-        {inTextImageProgress && (
+        {inTextMediaProgress && (
           <div className="min-w-full flex flex-col">
-            <span>Uploading image...</span>
-            <progress value={inTextImageProgress} max={100} className="min-w-full"/>
+            <span>Uploading media {inTextMediaName || 'unknown.?'}...</span>
+            <progress value={inTextMediaProgress} max={100} className="min-w-full"/>
           </div>
         )}
         <Button type="submit" gradientDuoTone="purpleToPink">
