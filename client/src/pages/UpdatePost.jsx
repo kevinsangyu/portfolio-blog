@@ -1,5 +1,5 @@
 import { Button, FileInput, Select, TextInput, Alert } from "flowbite-react";
-import React, { useEffect, useState } from "react";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import {
@@ -15,11 +15,17 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 
 export default function UpdatePost() {
+  // it cant be an issue with loading in images... the live service version can load in images just fine...
+  // the data is fetched correctly...
+  // try removing certain parts to see if it changes things, starting from the drag-drop and copy-paste functionalities...
   const navigate = useNavigate();
+  const quillRef = useRef()
   const { currentUser } = useSelector((state) => state.user);
-  const [file, setFile] = useState(null);
-  const [formdata, setFormdata] = useState({ category: "general" });
+  const [faceImage, setFaceImage] = useState(null);
+  const [formdata, setFormdata] = useState({ title: "", category: "general", content: "", image: "" });
   const [imageUploadProgress, setImageUploadProgress] = useState(null);
+  const [inTextMediaProgress, setInTextMediaProgress] = useState(null);
+  const [inTextMediaName, setInTextMediaName] = useState("");
   const [imageUploadError, setImageUploadError] = useState(null);
   const [publishError, setPublishError] = useState(null);
   const { postId } = useParams();
@@ -74,42 +80,169 @@ export default function UpdatePost() {
       setPublishError(`Could not update: ${error.message}`);
     }
   };
+  const uploadMedia = async (file, face) => {
+    // handles uploading images to firebase
+    // face is a boolean switch that refers to if the uploaded image is of the face image of the blog/post
+    if (!file) {
+      return
+    } else {
+      return new Promise((resolve, reject) => {
+        // returns a promise to ensure that it will wait for the image to finish uploading
+        const storage = getStorage(app);
+        const fileName = new Date().getTime() + "-" + file.name;
+        const storageRef = ref(storage, fileName);
+        const uploadTask = uploadBytesResumable(storageRef, file);
+        uploadTask.on(
+          "state_changed",
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            if (face) {
+              setImageUploadProgress(progress.toFixed(0));
+            } else {
+              setInTextMediaProgress(progress.toFixed(0))
+              setInTextMediaName(`${file.name} as ${fileName}`)
+            }
+          },
+          (error) => {
+            setImageUploadError(`Could not upload image: ${error}`);
+            if (face) {
+              setImageUploadProgress(null);
+            } else {
+              setInTextMediaProgress(null)
+              setInTextMediaName(null)
+            }
+            reject(error)
+          },
+          async () => {
+            try {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref)
+              if (face) {
+                setImageUploadProgress(null);
+              } else {
+                setInTextMediaProgress(null)
+                setInTextMediaName(null)
+              }
+              setImageUploadError(null)
+              resolve(downloadURL)
+            } catch (error) {
+              reject(error)
+            }
+          }
+        );
+      })
+    }
+  }
+  const insertMedia = (url, type) => {
+    // if the image is added to the reactquill textbox, insert the image into the reactquill textbox at the cursor
+    const quilleditor = quillRef?.current?.getEditor()
+    if (quilleditor) {
+      const range = quilleditor.getSelection()
+      quilleditor.insertEmbed(range.index, type, url)
+    }
+  }
   const handleUploadImage = async () => {
     try {
       setImageUploadError(null);
-      if (!file) {
+      if (!faceImage) {
         setImageUploadError("Please select an image");
         return;
       }
-      const storage = getStorage(app);
-      const fileName = new Date().getTime() + "-" + file.name;
-      const storageRef = ref(storage, fileName);
-      const uploadTask = uploadBytesResumable(storageRef, file);
-      uploadTask.on(
-        "state_changed",
-        (snapshot) => {
-          const progress =
-            (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setImageUploadProgress(progress.toFixed(0));
-        },
-        (error) => {
-          setImageUploadError(`Could not upload image: ${error}`);
-          setImageUploadProgress(null);
-        },
-        () => {
-          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-            setImageUploadProgress(null);
-            setImageUploadError(null);
-            setFormdata({ ...formdata, image: downloadURL });
-          });
-        }
-      );
+      const url = await uploadMedia(faceImage, true)
+      setFormdata({...formdata, image: url})
     } catch (error) {
       console.log(error);
-      setImageUploadError(`Could not upload image: ${error}`);
+      setImageUploadError(`Could not upload face image: ${error}`);
       setImageUploadProgress(null);
     }
   };
+  const quillImageButton = async () => {
+    // handles the image upload for the button on the reactquill's ribbon
+    const input = document.createElement("input");
+    input.setAttribute("type", "file");
+    input.setAttribute("accept", "image/*");
+    input.click();
+
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file) {
+        return;
+      }
+      const url = await uploadMedia(file, false)
+      insertMedia(url, "image")
+    };
+  };
+  const quillVideoButton = async () => {
+    // handles the image upload for the button on the reactquill's ribbon
+    const input = document.createElement("input");
+    input.setAttribute("type", "file");
+    input.setAttribute("accept", "video/*");
+    input.click();
+
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file) {
+        return;
+      }
+      const url = await uploadMedia(file, false)
+      insertMedia(url, "video")
+    };
+  };
+  useEffect(() => {
+    // the clipboard.addMatcher method causes an error where it prevents the textbox from being populated
+    // with content, so it has been removed. This just means that I cannot copy/paste images that are already
+    // being hosted elsewhere, and I have to upload it from my device instead.
+    // todo: fix this issue
+
+    // alters the image paste and drag/drop method of inserting images
+    const quilleditor = quillRef?.current?.getEditor()
+    if (!quilleditor) {
+      return
+    }
+
+    quilleditor.root.addEventListener("drop", async (event) => {
+      event.preventDefault()
+      if (!event.dataTransfer.files.length) {
+        return
+      } else {
+        const file = event.dataTransfer.files[0]
+        const type = file.type.startsWith("video") ? "video" : "image"
+        const url = await uploadMedia(file, false)
+        insertMedia(url, type)
+      }
+    })
+
+    quilleditor.root.addEventListener("paste", async (e) => {
+      const clipboardItems = e.clipboardData.items
+      for (const item of clipboardItems) {
+        if (item.type.startsWith("image") || item.type.startsWith("video")) {
+          e.preventDefault()
+          const file = item.getAsFile()
+          const type = file.type.startsWith("video") ? "video" : "image"
+          const url = await uploadMedia(file)
+          insertMedia(url, type)
+        }
+      }
+    })
+  }, [])
+  const quillmodules = useMemo(() => (
+    // useMemo() is used so react doesn't re-render the component, which makes it disappear.
+  {
+    toolbar: {
+      container: [
+        [{ header: [1, 2, 3, 4, 5, false] }],
+        ["bold", "italic", "underline", "strike", "link"],
+        [{ list: "ordered" }, { list: "bullet" }],
+        ["image", "video"],
+      ],
+      handlers: {
+        image: quillImageButton,
+        video: quillVideoButton,
+      },
+    },
+    clipboard: {
+      matchVisual: false
+    }
+  }), []);
   return (
     <div className="p-3 max-w-3xl mx-auto min-h-screen">
       <h1 className="text-center text-3xl my-7 font-semibold">Update a post</h1>
@@ -143,7 +276,7 @@ export default function UpdatePost() {
           <FileInput
             type="file"
             accept=";image/*"
-            onChange={(e) => setFile(e.target.files[0])}
+            onChange={(e) => setFaceImage(e.target.files[0])}
           />
           <Button
             type="button"
@@ -174,15 +307,24 @@ export default function UpdatePost() {
           />
         )}
         <ReactQuill
+        ref={quillRef}
           theme="snow"
           placeholder="Write something..."
-          className="h-72 mb-12"
+          style={{height: 800}}
+          className="h-120 mb-12"
           required
+          value={formdata.content || ""}
           onChange={(value) => {
             setFormdata({ ...formdata, content: value });
           }}
-          value={formdata.content}
+          modules={quillmodules}
         />
+        {inTextMediaProgress && (
+          <div className="min-w-full flex flex-col">
+            <span>Uploading media {inTextMediaName || 'unknown.?'}...</span>
+            <progress value={inTextMediaProgress} max={100} className="min-w-full"/>
+          </div>
+        )}
         <Button type="submit" gradientDuoTone="purpleToPink">
           Update
         </Button>
