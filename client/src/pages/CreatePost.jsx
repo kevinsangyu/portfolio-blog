@@ -16,10 +16,11 @@ import { useNavigate } from "react-router-dom";
 export default function CreatePost() {
   const navigate = useNavigate();
   const quillRef = useRef()
-  const [file, setFile] = useState(null);
+  const [faceImage, setFaceImage] = useState(null);
   const [formdata, setFormdata] = useState({ category: "general" });
   const [imageUploadProgress, setImageUploadProgress] = useState(null);
-  const [inTextImageProgress, setInTextImageProgress] = useState(null);
+  const [inTextMediaProgress, setInTextMediaProgress] = useState(null);
+  const [inTextMediaName, setInTextMediaName] = useState("");
   const [imageUploadError, setImageUploadError] = useState(null);
   const [publishError, setPublishError] = useState(null);
 
@@ -51,7 +52,7 @@ export default function CreatePost() {
       setPublishError(`Could not publish: ${error.message}`);
     }
   };
-  const uploadImage = async (file, face) => {
+  const uploadMedia = async (file, face) => {
     // handles uploading images to firebase
     // face is a boolean switch that refers to if the uploaded image is of the face image of the blog/post
     if (!file) {
@@ -70,15 +71,17 @@ export default function CreatePost() {
             if (face) {
               setImageUploadProgress(progress.toFixed(0));
             } else {
-              setInTextImageProgress(progress.toFixed(0))
+              setInTextMediaProgress(progress.toFixed(0))
+              setInTextMediaName(`${file.name} as ${fileName}`)
             }
           },
           (error) => {
-            setImageUploadError(`Could not upload image: ${error}`);
+            setImageUploadError(`Could not upload media: ${error}`);
             if (face) {
               setImageUploadProgress(null);
             } else {
-              setInTextImageProgress(null)
+              setInTextMediaProgress(null)
+              setInTextMediaName(null)
             }
             reject(error)
           },
@@ -88,7 +91,8 @@ export default function CreatePost() {
               if (face) {
                 setImageUploadProgress(null);
               } else {
-                setInTextImageProgress(null)
+                setInTextMediaProgress(null)
+                setInTextMediaName(null)
               }
               setImageUploadError(null)
               resolve(downloadURL)
@@ -100,27 +104,27 @@ export default function CreatePost() {
       })
     }
   }
-  const insertImage = (url) => {
+  const insertMedia = (url, type) => {
     // if the image is added to the reactquill textbox, insert the image into the reactquill textbox at the cursor
     const quilleditor = quillRef?.current?.getEditor()
     if (quilleditor) {
       const range = quilleditor.getSelection()
-      quilleditor.insertEmbed(range.index, "image", url)
+      quilleditor.insertEmbed(range.index, type, url)
     }
   }
   const handleUploadImage = async () => {
     // handles uploading the main image (face image) of the blog/post
     try {
       setImageUploadError(null);
-      if (!file) {
+      if (!faceImage) {
         setImageUploadError("Please select an image");
         return;
       }
-      const url = await uploadImage(file, true)
+      const url = await uploadMedia(faceImage, true)
       setFormdata({...formdata, image: url})
     } catch (error) {
       console.log(error);
-      setImageUploadError(`Could not upload image: ${error}`);
+      setImageUploadError(`Could not upload face image: ${error}`);
       setImageUploadProgress(null);
     }
   };
@@ -136,8 +140,24 @@ export default function CreatePost() {
       if (!file) {
         return;
       }
-      const url = await uploadImage(file, false)
-      insertImage(url)
+      const url = await uploadMedia(file, false)
+      insertMedia(url, "image")
+    };
+  };
+  const quillVideoButton = async () => {
+    // handles the image upload for the button on the reactquill's ribbon
+    const input = document.createElement("input");
+    input.setAttribute("type", "file");
+    input.setAttribute("accept", "video/*");
+    input.click();
+
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file) {
+        return;
+      }
+      const url = await uploadMedia(file, false)
+      insertMedia(url, "video")
     };
   };
   useEffect(() => {
@@ -154,10 +174,24 @@ export default function CreatePost() {
       } else {
         const blob = await fetch(src).then((res) => res.blob())
         const file = new File([blob], "pasted-image.png", {type: "image/png"})
-        const url = await uploadImage(file, false)
+        const url = await uploadMedia(file, false)
         return {ops: [{insert: {image: url}}]}
       }
     })
+
+    quilleditor.clipboard.addMatcher("video", async (node, delta) => {
+      const src = node.getAttribute("src");
+    
+      if (src.startsWith("http")) {
+        return delta
+      } else {
+        const blob = await fetch(src).then((res) => res.blob())
+        const file = new File([blob], "pasted-video.mp4", { type: "video/mp4" })
+        const url = await uploadVideo(file)
+    
+        return {ops: [{ insert: {video: url}}]}
+      }
+    });
 
     quilleditor.root.addEventListener("drop", async (event) => {
       event.preventDefault()
@@ -165,19 +199,21 @@ export default function CreatePost() {
         return
       } else {
         const file = event.dataTransfer.files[0]
-        const url = await uploadImage(file, false)
-        insertImage(url)
+        const type = file.type.startsWith("video") ? "video" : "image"
+        const url = await uploadMedia(file, false)
+        insertMedia(url, type)
       }
     })
 
     quilleditor.root.addEventListener("paste", async (e) => {
       const clipboardItems = e.clipboardData.items
       for (const item of clipboardItems) {
-        if (item.type.startsWith("image")) {
+        if (item.type.startsWith("image") || item.type.startsWith("video")) {
           e.preventDefault()
           const file = item.getAsFile()
-          const url = await uploadImage(file)
-          insertImage(url)
+          const type = file.type.startsWith("video") ? "video" : "image"
+          const url = await uploadMedia(file, false)
+          insertMedia(url, type)
         }
       }
     })
@@ -190,10 +226,11 @@ export default function CreatePost() {
         [{ header: [1, 2, 3, 4, 5, false] }],
         ["bold", "italic", "underline", "strike", "link"],
         [{ list: "ordered" }, { list: "bullet" }],
-        ["image"],
+        ["image", "video"],
       ],
       handlers: {
         image: quillImageButton,
+        video: quillVideoButton
       },
     },
     clipboard: {
@@ -233,7 +270,7 @@ export default function CreatePost() {
           <FileInput
             type="file"
             accept=";image/*"
-            onChange={(e) => setFile(e.target.files[0])}
+            onChange={(e) => setFaceImage(e.target.files[0])}
           />
           <Button
             type="button"
@@ -275,10 +312,10 @@ export default function CreatePost() {
           }}
           modules={quillmodules}
         />
-        {inTextImageProgress && (
+        {inTextMediaProgress && (
           <div className="min-w-full flex flex-col">
-            <span>Uploading image...</span>
-            <progress value={inTextImageProgress} max={100} className="min-w-full"/>
+            <span>Uploading media {inTextMediaName || 'unknown.?'}...</span>
+            <progress value={inTextMediaProgress} max={100} className="min-w-full"/>
           </div>
         )}
         <Button type="submit" gradientDuoTone="purpleToPink">
