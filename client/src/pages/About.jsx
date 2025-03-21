@@ -10,7 +10,7 @@ export default function About() {
             <p>Welcome to my Blog! The purpose of this blog is to act as a portfolio as well as a platform for sharing my thoughts on any topics that interest me. 
               Said topics can range between general technology and software development to volleyball and manga.
             </p>
-            <p>I am a soon-to-be graduate from UTS, who completed studying Computing Science (Honours) on January 2025. I love anything software development related, and 
+            <p>I am a graduate from UTS, who completed studying Computing Science (Honours) on January 2025. I love anything software development related, and 
               am currently looking to enter the industry in either a software development or DevOps role. I'm Korean and have been living in Australia since 2010, attending 
               a local public primary school and high school before entering University. I speak fluent English on top of Korean and conversational Japanese. 
               I am based in Sydney, NSW Australia, and current work at King's Own Institute as part of the IT department. You can connect with me on LinkedIn or view my GitHub in the 

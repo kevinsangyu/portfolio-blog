@@ -8,9 +8,15 @@ export const create = async (req, res, next) => {
     if (!req.body.title || !req.body.content) {
         return next(errorHandler(400, "Please provide all required fields"))
     }
+    let content = req.body.content
+    let imgTagPos = -1
+    while (content.search(/<img(?![^>]*\bstyle\s*=)[^>]*>/) !== -1) {
+        imgTagPos = content.search(/<img(?![^>]*\bstyle\s*=)[^>]*>/)
+        content = content.slice(0, imgTagPos+4) + ' style="margin: auto"' + content.slice(imgTagPos+4)
+    }
     const slug = req.body.title.split(" ").join("-").toLowerCase().replace(/[^a-zA-Z0-9-]/g, '-')
     const newPost = new Post({
-        ...req.body, slug, userId: req.user.id
+        ...req.body, slug, userId: req.user.id, content
     })
     try {
         const savedPost = await newPost.save()
@@ -69,11 +75,17 @@ export const updatepost = async (req, res, next) => {
     if (!req.user.isAdmin || req.user.id !== req.params.userId) {
         return next(errorHandler(403, 'You are not allowed to edit this post'))
     }
+    let content = req.body.content
+    let imgTagPos = -1
+    while (content.search(/<img(?![^>]*\bstyle\s*=)[^>]*>/) !== -1) {
+        imgTagPos = content.search(/<img(?![^>]*\bstyle\s*=)[^>]*>/)
+        content = content.slice(0, imgTagPos+4) + ' style="margin: auto"' + content.slice(imgTagPos+4)
+    }
     try {
         const updatedPost = await Post.findByIdAndUpdate(req.params.postId, {
             $set: {
                 title: req.body.title,
-                content: req.body.content,
+                content: content,
                 category: req.body.category,
                 image: req.body.image,
             }

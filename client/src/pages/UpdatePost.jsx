@@ -22,13 +22,14 @@ export default function UpdatePost() {
   const quillRef = useRef()
   const { currentUser } = useSelector((state) => state.user);
   const [faceImage, setFaceImage] = useState(null);
-  const [formdata, setFormdata] = useState({ title: "", category: "general", content: "", image: "" });
+  const [formdata, setFormdata] = useState({ category: "general" });
   const [imageUploadProgress, setImageUploadProgress] = useState(null);
   const [inTextMediaProgress, setInTextMediaProgress] = useState(null);
   const [inTextMediaName, setInTextMediaName] = useState("");
   const [imageUploadError, setImageUploadError] = useState(null);
   const [publishError, setPublishError] = useState(null);
   const { postId } = useParams();
+  console.log("formdata: ", formdata)
   useEffect(() => {
     try {
       const fetchPost = async () => {
@@ -40,12 +41,14 @@ export default function UpdatePost() {
           return;
         } else {
           setPublishError(null);
-          setFormdata(data.posts[0]);
+          const postData = data.posts[0]
+          console.log("Setting form data after fetching...")
+          setFormdata({...formdata, ...postData});
         }
       };
       fetchPost();
     } catch (error) {
-      console.log(error);
+      console.log("flag1: ", error);
     }
   }, [postId]);
 
@@ -148,6 +151,7 @@ export default function UpdatePost() {
         return;
       }
       const url = await uploadMedia(faceImage, true)
+      console.log("Setting formdata after uploading faceimage")
       setFormdata({...formdata, image: url})
     } catch (error) {
       console.log(error);
@@ -231,7 +235,7 @@ export default function UpdatePost() {
       container: [
         [{ header: [1, 2, 3, 4, 5, false] }],
         ["bold", "italic", "underline", "strike", "link"],
-        [{ list: "ordered" }, { list: "bullet" }],
+        [{ list: "ordered" }, { list: "bullet" }, { align: []}],
         ["image", "video"],
       ],
       handlers: {
@@ -255,12 +259,14 @@ export default function UpdatePost() {
             id="title"
             className="flex-1"
             onChange={(e) => {
+              console.log("Updating formdata after changing title")
               setFormdata({ ...formdata, title: e.target.value });
             }}
             value={formdata.title}
           />
           <Select
             onChange={(e) => {
+              console.log("Updating formdata after changing category")
               setFormdata({ ...formdata, category: e.target.value });
             }}
             value={formdata.category}
@@ -275,7 +281,7 @@ export default function UpdatePost() {
         <div className="flex gap-4 items-center justify-between border-4 border-teal-500 border-dotted p-3">
           <FileInput
             type="file"
-            accept=";image/*"
+            accept="image/*"
             onChange={(e) => setFaceImage(e.target.files[0])}
           />
           <Button
@@ -313,8 +319,10 @@ export default function UpdatePost() {
           style={{height: 800}}
           className="h-120 mb-12"
           required
-          value={formdata.content || ""}
+          value={formdata.content || "Loading..."}
           onChange={(value) => {
+            console.log("formdata before changing content: ", formdata)
+            // this setFormdata is called while formdata is still the default, and so all the other data is erased and only the content and category remains.
             setFormdata({ ...formdata, content: value });
           }}
           modules={quillmodules}

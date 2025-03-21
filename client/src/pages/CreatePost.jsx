@@ -225,7 +225,7 @@ export default function CreatePost() {
       container: [
         [{ header: [1, 2, 3, 4, 5, false] }],
         ["bold", "italic", "underline", "strike", "link"],
-        [{ list: "ordered" }, { list: "bullet" }],
+        [{ list: "ordered" }, { list: "bullet" }, { align: []}],
         ["image", "video"],
       ],
       handlers: {
@@ -269,7 +269,7 @@ export default function CreatePost() {
         <div className="flex gap-4 items-center justify-between border-4 border-teal-500 border-dotted p-3">
           <FileInput
             type="file"
-            accept=";image/*"
+            accept="image/*"
             onChange={(e) => setFaceImage(e.target.files[0])}
           />
           <Button
