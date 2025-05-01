@@ -1,5 +1,6 @@
 import Post from "../models/post.model.js"
 import { errorHandler } from "../utils/error.js"
+import { emailNotification } from "./user.controller.js"
 
 export const create = async (req, res, next) => {
     if (!req.user.isAdmin) {
@@ -9,14 +10,18 @@ export const create = async (req, res, next) => {
         return next(errorHandler(400, "Please provide all required fields"))
     }
     const slug = req.body.title.split(" ").join("-").toLowerCase().replace(/[^a-zA-Z0-9-]/g, '-')
+    const {email, ...postData} = req.body
     const newPost = new Post({
-        ...req.body, slug, userId: req.user.id
+        ...postData, slug, userId: req.user.id
     })
     try {
         const savedPost = await newPost.save()
         res.status(201).json(savedPost)
     } catch (error) {
         next(error)
+    }
+    if (email) {
+        await emailNotification(postData, slug)
     }
 }
 

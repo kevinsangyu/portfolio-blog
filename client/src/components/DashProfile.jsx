@@ -187,6 +187,10 @@ export default function DashProfile() {
             <TextInput type='text' id='username' placeholder='username' defaultValue={currentUser.username} onChange={handleChange}/>
             <TextInput type='text' id='email' placeholder='email' defaultValue={currentUser.email} onChange={handleChange}/>
             <TextInput type='password' id='password' onChange={handleChange} placeholder='password'/>
+            <label className="flex items-center justify-start gap-2">
+                <input type="checkbox" defaultChecked onChange={(e) => {setFormData({...formData, emailNotifs: e.target.checked})}}/>
+                Receive email notifications?
+            </label>
             <Button type='submit' gradientDuoTone='purpleToBlue' outline disabled={loading || imageUploadProgress}>
                 {loading ? 'Loading...' : "Update"}
             </Button>
