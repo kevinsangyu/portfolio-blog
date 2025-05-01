@@ -1,4 +1,4 @@
-import { Button, FileInput, Select, TextInput, Alert } from "flowbite-react";
+import { Button, FileInput, Select, TextInput, Alert, Checkbox } from "flowbite-react";
 import React, { useState, useRef, useMemo, useEffect } from "react";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
@@ -17,7 +17,7 @@ export default function CreatePost() {
   const navigate = useNavigate();
   const quillRef = useRef()
   const [faceImage, setFaceImage] = useState(null);
-  const [formdata, setFormdata] = useState({ category: "general" });
+  const [formdata, setFormdata] = useState({ category: "general", email: true });
   const [imageUploadProgress, setImageUploadProgress] = useState(null);
   const [inTextMediaProgress, setInTextMediaProgress] = useState(null);
   const [inTextMediaName, setInTextMediaName] = useState("");
@@ -318,6 +318,10 @@ export default function CreatePost() {
             <progress value={inTextMediaProgress} max={100} className="min-w-full"/>
           </div>
         )}
+        <label className="flex items-center justify-start gap-2">
+          <input type="checkbox" defaultChecked onChange={(e) => {setFormdata({...formdata, email: e.target.checked})}}/>
+           Send email notifications?
+        </label>
         <Button type="submit" gradientDuoTone="purpleToPink">
           Publish
         </Button>

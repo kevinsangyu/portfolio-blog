@@ -1,6 +1,10 @@
 import User from "../models/user.model.js"
 import { errorHandler } from "../utils/error.js"
 import bcryptjs from 'bcryptjs'
+import nodemailer from 'nodemailer'
+import dotenv from 'dotenv';
+
+dotenv.config()
 
 export const updateUser = async (req, res, next) => {
     if (req.user.id !== req.params.userId) {
@@ -31,6 +35,7 @@ export const updateUser = async (req, res, next) => {
             $set: {
                 username: req.body.username,
                 email: req.body.email,
+                emailNotifs: req.body.emailNotifs,
                 profilePicture: req.body.profilePicture,
                 password: req.body.password
             }
@@ -102,5 +107,44 @@ export const getUser = async (req, res, next) => {
         res.status(200).json(userInfo)
     } catch (error) {
         next(error)
+    }
+}
+
+export const emailNotification = async (postData, slug) => {
+    // sending an email to users about a new post
+    const users = await User.find({emailNotifs: true}, 'email')
+    const emails = users.map((user) => user.email)
+
+    const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+            user: process.env.EMAILUSER,
+            pass: process.env.EMAILPASS
+        }
+    })
+
+    const mailOptions = {
+        from: process.env.EMAILUSER,
+        bcc: emails,
+        subject: `${postData.title} [NEW POST]`,
+        html: `
+        <h2>Hey there! A new post is available to read on my blog: www.kevincodex.com/post/${slug}</h2>
+        <h1>${postData.title}</h1>
+        <img src=${postData.image} alt="blog face-image" width="1000"/>
+        <p>${postData.content.substring(0, 300)}...</p>
+        <br><br>
+        <h4>You're receiving this email because you have opted in to email notifications. To turn this off, please navigate to your profile and deselect email notifications and press update.
+        www.kevincodex.com/dashboard?tab=profile</h4>
+        `,
+        headers: {
+            'Content-Type': 'text/html; charset=UTF-8',
+          },
+    }
+
+    try {
+        const info = await transporter.sendMail(mailOptions)
+        console.log("Email notifications have been sent.")
+    } catch (error) {
+        console.log(error)
     }
 }
