@@ -22,12 +22,13 @@ export default function UpdatePost() {
   const quillRef = useRef()
   const { currentUser } = useSelector((state) => state.user);
   const [faceImage, setFaceImage] = useState(null);
-  const [formdata, setFormdata] = useState({ title: "", category: "general", content: "", image: "" });
+  const [formdata, setFormdata] = useState({ title: "Loading post content...", category: "general", content: "", image: "" });
   const [imageUploadProgress, setImageUploadProgress] = useState(null);
   const [inTextMediaProgress, setInTextMediaProgress] = useState(null);
   const [inTextMediaName, setInTextMediaName] = useState("");
   const [imageUploadError, setImageUploadError] = useState(null);
   const [publishError, setPublishError] = useState(null);
+  const [loading, setLoading] = useState(true)
   const { postId } = useParams();
   useEffect(() => {
     try {
@@ -41,6 +42,7 @@ export default function UpdatePost() {
         } else {
           setPublishError(null);
           setFormdata(data.posts[0]);
+          setLoading(false);
         }
       };
       fetchPost();
@@ -306,19 +308,21 @@ export default function UpdatePost() {
             className="w-full h-72 object-cover"
           />
         )}
-        <ReactQuill
-        ref={quillRef}
-          theme="snow"
-          placeholder="Write something..."
-          style={{height: 800}}
-          className="h-120 mb-12"
-          required
-          value={formdata.content || ""}
-          onChange={(value) => {
-            setFormdata({ ...formdata, content: value });
-          }}
-          modules={quillmodules}
-        />
+        {!loading && (
+          <ReactQuill
+          ref={quillRef}
+            theme="snow"
+            placeholder="Write something..."
+            style={{height: 800}}
+            className="h-120 mb-12"
+            required
+            value={formdata.content || ""}
+            onChange={(value) => {
+              setFormdata({ ...formdata, content: value });
+            }}
+            modules={quillmodules}
+          />
+        )}
         {inTextMediaProgress && (
           <div className="min-w-full flex flex-col">
             <span>Uploading media {inTextMediaName || 'unknown.?'}...</span>
